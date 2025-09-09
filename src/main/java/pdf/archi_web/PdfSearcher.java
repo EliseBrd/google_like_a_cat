@@ -41,23 +41,20 @@ public class PdfSearcher {
             int page = Integer.parseInt(d.get("page"));
             String content = d.get("content");
 
-            // On découpe par paragraphe
             String[] paragraphs = content.split("\\n\\n");
             for (int p = 0; p < paragraphs.length; p++) {
                 String paragraph = paragraphs[p];
                 if (paragraph.toLowerCase().contains(query.toLowerCase())) {
-                    // Découpe le paragraphe en lignes pour avoir le mot
                     String[] lines = paragraph.split("\\n");
                     for (int l = 0; l < lines.length; l++) {
                         if (lines[l].toLowerCase().contains(query.toLowerCase())) {
                             results.add(new SearchResult(
                                     filename,
                                     page,
-                                    p + 1,   // numéro du paragraphe
-                                    l + 1,       // numéro de la ligne dans le paragraphe
-                                    lines[l]     // contenu de la ligne
+                                    p + 1, 
+                                    l + 1,       
+                                    lines[l]    
                             ));
-                            return results;
                         }
                     }
                 }
