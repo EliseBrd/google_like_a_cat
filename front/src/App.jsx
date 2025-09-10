@@ -1,5 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import ResultsByFile from "./components/ResultsByFile";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faSearch } from "@fortawesome/free-solid-svg-icons";
 
 function useDebouncedValue(value, delay = 250) {
   const [v, setV] = useState(value);
@@ -51,23 +53,36 @@ export default function App() {
       }}
     >
       <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 16 }}>
-        Recherche de documents
+        Rechercher dans les documents
       </h1>
 
-      <input
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder="Tapez votre requête…"
-        className="search-input"
-        style={{
-          width: "100%",
-          padding: "12px 14px",
-          fontSize: 16,
-          border: "1px solid #ddd",
-          borderRadius: 8,
-          outline: "none",
-        }}
-      />
+      <div style={{ position: "relative", width: "100%" }}>
+        <FontAwesomeIcon
+          icon={faSearch}
+          style={{
+            position: "absolute",
+            left: 12,
+            top: "50%",
+            transform: "translateY(-50%)",
+            color: "#888",
+            pointerEvents: "none",
+          }}
+        />
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Tapez votre requête…"
+          className="search-input"
+          style={{
+            width: "100%",
+            padding: "12px 14px 12px 40px", 
+            fontSize: 16,
+            border: "1px solid #ddd",
+            borderRadius: 8,
+            outline: "none",
+          }}
+        />
+      </div>
 
       {loading && (
         <div style={{ marginTop: 10, fontSize: 14, color: "#666" }}>
