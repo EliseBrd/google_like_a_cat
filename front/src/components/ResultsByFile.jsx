@@ -10,7 +10,7 @@ function groupByFilename(hits = []) {
   return map;
 }
 
-export default function ResultsByFile({ hits, query }) {
+export default function ResultsByFile({ hits, query, onSelectUrl }) {
   const groups = useMemo(() => groupByFilename(hits), [hits]);
 
   if (!hits?.length) {
@@ -24,7 +24,6 @@ export default function ResultsByFile({ hits, query }) {
           const pageA = a.page ?? 0;
           const pageB = b.page ?? 0;
           if (pageA !== pageB) return pageA - pageB;
-
           const lineA = a.line ?? 0;
           const lineB = b.line ?? 0;
           return lineA - lineB;
@@ -42,7 +41,12 @@ export default function ResultsByFile({ hits, query }) {
 
             <div className="acc-content">
               {sortedItems.map((hit, i) => (
-                <Occurrence key={`${filename}-${i}`} hit={hit} query={query} />
+                <Occurrence
+                  key={`${filename}-${i}`}
+                  hit={hit}
+                  query={query}
+                  onSelectUrl={onSelectUrl}
+                />
               ))}
             </div>
           </details>
@@ -52,16 +56,22 @@ export default function ResultsByFile({ hits, query }) {
   );
 }
 
-function Occurrence({ hit, query }) {
+function Occurrence({ hit, query, onSelectUrl }) {
   const { url, filename, page, line, lineContent, content } = hit;
 
-  const highlight = (text, query) => {
-    if (!query) return text;
-    const regex = new RegExp(`(${query})`, "gi");
+  const highlight = (text, q) => {
+    if (!q) return text;
+    const regex = new RegExp(`(${q})`, "gi");
     const parts = text.split(regex);
     return parts.map((part, i) =>
       regex.test(part) ? <mark key={i}>{part}</mark> : part
     );
+  };
+
+  const openInViewer = (e) => {
+    if (!url) return;
+    e.preventDefault();
+    onSelectUrl?.(url); // met à jour PdfJsViewer
   };
 
   return (
@@ -78,9 +88,14 @@ function Occurrence({ hit, query }) {
       )}
 
       {url && (
-        <a className="occ-link" href={url} target="_blank" rel="noreferrer">
+        <a
+          className="occ-link"
+          href={url}
+          onClick={openInViewer}
+          rel="noreferrer"
+        >
           {url.startsWith("/pdf/")
-            ? url
+            ? "Afficher à droite"
             : `Ouvrir ${filename || "le document"}`}
         </a>
       )}
