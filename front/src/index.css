@@ -1,68 +1,207 @@
+/* Couleurs */
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+  --bg: #fdfdfd;
+  --white: #ffffff;
+  --text: #111;
+  --muted: #666;
+  --border: #eee;
+  --green: #a8e6a3;
 }
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
+  background: var(--bg);
+  font-family: system-ui, sans-serif;
+  color: var(--text);
+}
+
+.centered {
   min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+.box {
+  width: 100%;
+  max-width: 900px;
+  background: var(--white);
+  border-radius: 16px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  padding: 28px;
 }
 
-button {
+.search-input {
+  width: 100%;
+  padding: 12px 14px 12px 40px;
+  font-size: 16px;
+  border: 2px solid var(--green);
   border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  color: var(--text);
+  outline: none;
+  background-color: var(--white);
+  transition: border 0.15s, box-shadow 0.15s;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+.search-input:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--green) 25%, transparent);
+}
+
+.accordion {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.acc-item {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--white);
+  overflow: auto;
+  position: relative;
+  max-height: 70vh;
+}
+
+.acc-summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s, border-color 0.15s;
+  gap: 20px;
+}
+
+.acc-summary::-webkit-details-marker {
+  display: none;
+}
+
+.acc-summary::after {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 8px;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: rotate(45deg);
+  transition: transform 0.25s ease, border-color 0.25s ease;
+  margin-left: auto;
+}
+
+.acc-item[open] .acc-summary {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 0 var(--border), 0 6px 12px rgba(0, 0, 0, 0.04);
+}
+
+.acc-item[open] .acc-summary::after {
+  transform: rotate(-135deg);
+  border-color: var(--green);
+}
+
+.acc-filename {
+  font-weight: 600;
+}
+
+.acc-count {
+  font-size: 12px;
+  color: var(--muted);
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--green) 12%, var(--white));
+}
+
+.acc-content {
+  padding: 8px 12px 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.occ {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fafafa;
+}
+
+.occ-meta {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.occ-content {
+  font-size: 14px;
+  color: #333;
+  margin-bottom: 6px;
+}
+
+.occ-line {
+  margin: 0;
+  font-size: 13px;
+  white-space: pre-wrap;
+  color: #444;
+  background: #fff;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.occ-link {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 13px;
+  color: #0b5;
+  border-bottom: 1px dashed color-mix(in srgb, var(--green) 50%, #0b5);
+  text-decoration: none;
+}
+
+.occ-link:hover {
+  color: #063;
+  border-bottom-color: #063;
+}
+
+mark {
+  background: var(--green);
+  border-radius: 4px;
+  padding: 0 2px;
+  font-weight: 600;
+}
+
+.pdfjs-shell {
+  height: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  background: var(--white);
+}
+
+.pdfjs-page {
+  position: relative;
+  line-height: 0;
+}
+.pdfjs-page canvas {
+  display: block;
+}
+.textLayer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+/* on laisse pdf_viewer.css gérer .textLayer > span */
+
+mark.pdfhl {
+  background: rgba(255, 235, 59, 0.6);
+  /* ne PAS mettre de padding, border, outline, font-weight, etc. */
 }
