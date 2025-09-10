@@ -34,11 +34,13 @@ body {
 
 .search-input {
   width: 100%;
-  padding: 14px 18px;
+  padding: 12px 14px 12px 40px;
   font-size: 16px;
   border: 2px solid var(--green);
-  border-radius: 28px;
+  border-radius: 8px;
+  color: var(--text);
   outline: none;
+  background-color: var(--white);
   transition: border 0.15s, box-shadow 0.15s;
 }
 
@@ -57,7 +59,9 @@ body {
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--white);
-  overflow: hidden;
+  overflow: auto;
+  position: relative;
+  max-height: 70vh;
 }
 
 .acc-summary {
@@ -87,6 +91,15 @@ body {
   transform: rotate(45deg);
   transition: transform 0.25s ease, border-color 0.25s ease;
   margin-left: auto;
+}
+
+.acc-item[open] .acc-summary {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 0 var(--border), 0 6px 12px rgba(0, 0, 0, 0.04);
 }
 
 .acc-item[open] .acc-summary::after {
@@ -155,4 +168,40 @@ body {
 .occ-link:hover {
   color: #063;
   border-bottom-color: #063;
+}
+
+mark {
+  background: var(--green);
+  border-radius: 4px;
+  padding: 0 2px;
+  font-weight: 600;
+}
+
+.pdfjs-shell {
+  height: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  background: var(--white);
+}
+
+.pdfjs-page {
+  position: relative;
+  line-height: 0;
+}
+.pdfjs-page canvas {
+  display: block;
+}
+.textLayer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+/* on laisse pdf_viewer.css gérer .textLayer > span */
+
+mark.pdfhl {
+  background: rgba(255, 235, 59, 0.6);
+  /* ne PAS mettre de padding, border, outline, font-weight, etc. */
 }

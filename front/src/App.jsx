@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import ResultsByFile from "./components/ResultsByFile";
+import PdfJsViewer from "./components/PdfJsViewer";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSearch } from "@fortawesome/free-solid-svg-icons";
 
@@ -18,17 +19,16 @@ export default function App() {
   const [hits, setHits] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [selectedUrl, setSelectedUrl] = useState("");
 
   useEffect(() => {
-    fetch("/api/bonjour")
-      .then((r) => r.text())
-      .then(console.log)
-      .catch(console.error);
+    fetch("/api/bonjour").then((r) => r.text()).then(console.log).catch(console.error);
   }, []);
 
   useEffect(() => {
     if (!debouncedQ.trim()) {
       setHits([]);
+      setSelectedUrl("");
       return;
     }
     setLoading(true);
@@ -43,63 +43,62 @@ export default function App() {
       .finally(() => setLoading(false));
   }, [debouncedQ]);
 
-  return (
-    <div
-      style={{
-        maxWidth: 760,
-        margin: "40px auto",
-        padding: "0 16px",
-        fontFamily: "system-ui, sans-serif",
-      }}
-    >
-      <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 16 }}>
-        Rechercher dans les documents
-      </h1>
+  useEffect(() => {
+    if (hits?.length) {
+      const firstWithUrl = hits.find(h => h.url);
+      if (firstWithUrl) setSelectedUrl(firstWithUrl.url);
+    } else {
+      setSelectedUrl("");
+    }
+  }, [hits]);
 
-      <div style={{ position: "relative", width: "100%" }}>
-        <FontAwesomeIcon
-          icon={faSearch}
-          style={{
-            position: "absolute",
-            left: 12,
-            top: "50%",
-            transform: "translateY(-50%)",
-            color: "#888",
-            pointerEvents: "none",
-          }}
-        />
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Tapez votre requête…"
-          className="search-input"
-          style={{
-            width: "100%",
-            padding: "12px 14px 12px 40px", 
-            fontSize: 16,
-            border: "1px solid #ddd",
-            borderRadius: 8,
-            outline: "none",
-          }}
-        />
+  return (
+    <div style={{ height: "100vh", display: "grid", gridTemplateRows: "auto 1fr" }}>
+      <div style={{ margin: "0 0", width: "50%", left: 0, padding: "16px" }}>
+        <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 12 }}>Rechercher dans les documents</h1>
+
+        <div style={{ position: "relative", width: "100%" }}>
+          <FontAwesomeIcon
+            icon={faSearch}
+            style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#888", pointerEvents: "none" }}
+          />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Tapez votre requête…"
+            className="search-input"
+          />
+          {loading && <div style={{ marginTop: 8, fontSize: 14, color: "#666" }}>Recherche…</div>}
+          {error && <div style={{ marginTop: 8, fontSize: 14, color: "#c00" }}>Erreur: {error}</div>}
+        </div>
       </div>
 
-      {loading && (
-        <div style={{ marginTop: 10, fontSize: 14, color: "#666" }}>
-          Recherche…
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(450px, 650px) 1fr",
+          gap: 12,
+          height: "100%",
+          width: "100%",
+          margin: "0 auto",
+          padding: "0 16px 16px",
+          boxSizing: "border-box",
+        }}
+      >
+        <div style={{ overflow: "auto", paddingRight: 4 }}>
+          {debouncedQ.trim() && !loading && !error ? (
+            <ResultsByFile
+              hits={hits}
+              query={debouncedQ}
+              onSelectUrl={(url) => setSelectedUrl(url)}
+            />
+          ) : (
+            <div style={{ color: "#666", fontSize: 14 }}>Tape une requête pour commencer.</div>
+          )}
         </div>
-      )}
-      {error && (
-        <div style={{ marginTop: 10, fontSize: 14, color: "#c00" }}>
-          Erreur: {error}
-        </div>
-      )}
 
-      {debouncedQ.trim() && !loading && !error && (
-        <div>
-          <ResultsByFile hits={hits} />
-        </div>
-      )}
+        <PdfJsViewer src={selectedUrl} query={debouncedQ} />
+      </div>
     </div>
   );
 }

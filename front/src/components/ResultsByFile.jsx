@@ -10,7 +10,7 @@ function groupByFilename(hits = []) {
   return map;
 }
 
-export default function ResultsByFile({ hits }) {
+export default function ResultsByFile({ hits, query, onSelectUrl }) {
   const groups = useMemo(() => groupByFilename(hits), [hits]);
 
   if (!hits?.length) {
@@ -24,7 +24,6 @@ export default function ResultsByFile({ hits }) {
           const pageA = a.page ?? 0;
           const pageB = b.page ?? 0;
           if (pageA !== pageB) return pageA - pageB;
-
           const lineA = a.line ?? 0;
           const lineB = b.line ?? 0;
           return lineA - lineB;
@@ -35,13 +34,19 @@ export default function ResultsByFile({ hits }) {
             <summary className="acc-summary">
               <span className="acc-filename">{filename}</span>
               <span className="acc-count">
-                {sortedItems.length} occurrence{sortedItems.length > 1 ? "s" : ""}
+                {sortedItems.length} occurrence
+                {sortedItems.length > 1 ? "s" : ""}
               </span>
             </summary>
 
             <div className="acc-content">
               {sortedItems.map((hit, i) => (
-                <Occurrence key={`${filename}-${i}`} hit={hit} />
+                <Occurrence
+                  key={`${filename}-${i}`}
+                  hit={hit}
+                  query={query}
+                  onSelectUrl={onSelectUrl}
+                />
               ))}
             </div>
           </details>
@@ -51,16 +56,23 @@ export default function ResultsByFile({ hits }) {
   );
 }
 
-function Occurrence({ hit }) {
-  const {
-    url,
-    filename,
-    page,
-    paragraph,
-    line,
-    lineContent,
-    content,
-  } = hit;
+function Occurrence({ hit, query, onSelectUrl }) {
+  const { url, filename, page, line, lineContent, content } = hit;
+
+  const highlight = (text, q) => {
+    if (!q) return text;
+    const regex = new RegExp(`(${q})`, "gi");
+    const parts = text.split(regex);
+    return parts.map((part, i) =>
+      regex.test(part) ? <mark key={i}>{part}</mark> : part
+    );
+  };
+
+  const openInViewer = (e) => {
+    if (!url) return;
+    e.preventDefault();
+    onSelectUrl?.(url); // met à jour PdfJsViewer
+  };
 
   return (
     <div className="occ">
@@ -72,12 +84,19 @@ function Occurrence({ hit }) {
       {content && <div className="occ-content">{content}</div>}
 
       {lineContent && (
-        <pre className="occ-line">{lineContent}</pre>
+        <pre className="occ-line">{highlight(lineContent, query)}</pre>
       )}
 
       {url && (
-        <a className="occ-link" href={url} target="_blank" rel="noreferrer">
-          {url.startsWith("/pdf/") ? url : `Ouvrir ${filename || "le document"}`}
+        <a
+          className="occ-link"
+          href={url}
+          onClick={openInViewer}
+          rel="noreferrer"
+        >
+          {url.startsWith("/pdf/")
+            ? "Afficher à droite"
+            : `Ouvrir ${filename || "le document"}`}
         </a>
       )}
     </div>
