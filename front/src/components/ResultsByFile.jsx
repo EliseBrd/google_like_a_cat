@@ -10,7 +10,7 @@ function groupByFilename(hits = []) {
   return map;
 }
 
-export default function ResultsByFile({ hits }) {
+export default function ResultsByFile({ hits, query }) {
   const groups = useMemo(() => groupByFilename(hits), [hits]);
 
   if (!hits?.length) {
@@ -35,13 +35,14 @@ export default function ResultsByFile({ hits }) {
             <summary className="acc-summary">
               <span className="acc-filename">{filename}</span>
               <span className="acc-count">
-                {sortedItems.length} occurrence{sortedItems.length > 1 ? "s" : ""}
+                {sortedItems.length} occurrence
+                {sortedItems.length > 1 ? "s" : ""}
               </span>
             </summary>
 
             <div className="acc-content">
               {sortedItems.map((hit, i) => (
-                <Occurrence key={`${filename}-${i}`} hit={hit} />
+                <Occurrence key={`${filename}-${i}`} hit={hit} query={query} />
               ))}
             </div>
           </details>
@@ -51,16 +52,17 @@ export default function ResultsByFile({ hits }) {
   );
 }
 
-function Occurrence({ hit }) {
-  const {
-    url,
-    filename,
-    page,
-    paragraph,
-    line,
-    lineContent,
-    content,
-  } = hit;
+function Occurrence({ hit, query }) {
+  const { url, filename, page, line, lineContent, content } = hit;
+
+  const highlight = (text, query) => {
+    if (!query) return text;
+    const regex = new RegExp(`(${query})`, "gi");
+    const parts = text.split(regex);
+    return parts.map((part, i) =>
+      regex.test(part) ? <mark key={i}>{part}</mark> : part
+    );
+  };
 
   return (
     <div className="occ">
@@ -72,12 +74,14 @@ function Occurrence({ hit }) {
       {content && <div className="occ-content">{content}</div>}
 
       {lineContent && (
-        <pre className="occ-line">{lineContent}</pre>
+        <pre className="occ-line">{highlight(lineContent, query)}</pre>
       )}
 
       {url && (
         <a className="occ-link" href={url} target="_blank" rel="noreferrer">
-          {url.startsWith("/pdf/") ? url : `Ouvrir ${filename || "le document"}`}
+          {url.startsWith("/pdf/")
+            ? url
+            : `Ouvrir ${filename || "le document"}`}
         </a>
       )}
     </div>

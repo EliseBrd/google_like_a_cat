@@ -75,7 +75,7 @@ export default function App() {
           className="search-input"
           style={{
             width: "100%",
-            padding: "12px 14px 12px 40px", 
+            padding: "12px 14px 12px 40px",
             fontSize: 16,
             border: "1px solid #ddd",
             borderRadius: 8,
@@ -97,7 +97,7 @@ export default function App() {
 
       {debouncedQ.trim() && !loading && !error && (
         <div>
-          <ResultsByFile hits={hits} />
+          <ResultsByFile hits={hits} query={debouncedQ} />
         </div>
       )}
     </div>
