@@ -265,17 +265,17 @@ export default function App() {
             placeholder="Tapez votre requête…"
             className="search-input"
           />
-          {loading && (
+        </div>
+        {loading && (
             <div style={{ marginTop: 8, fontSize: 14, color: "#666" }}>
               Recherche en cours...
             </div>
-          )}
-          {error && (
+        )}
+        {error && (
             <div style={{ marginTop: 8, fontSize: 14, color: "#c00" }}>
               Erreur: {error}
             </div>
-          )}
-        </div>
+        )}
       </div>
 
       <div
