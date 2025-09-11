@@ -22,7 +22,6 @@ const WebSocketSearch = () => {
             // S'abonner au topic pour recevoir les résultats
             stompClient.current.subscribe(`/queue/results-user123`, (message) => {
                 try {
-                    console.log("Message reçu :", message.body);
                     const body = JSON.parse(message.body);
                     if (body.status === "COMPLETED") {
                         setStatus("Recherche terminée");
@@ -33,6 +32,8 @@ const WebSocketSearch = () => {
                     }
                 } catch (e) {
                     console.log("Message reçu :", message.body);
+                    console.error(e);
+
                 }
             });
         };

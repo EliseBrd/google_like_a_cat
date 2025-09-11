@@ -1,9 +1,10 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 function groupByFilename(hits = []) {
   const map = new Map();
   for (const h of hits) {
-    const key = h.filename || "Sans_nom";
+    // Sécurise l'accès au nom du fichier
+    const key = h.filename || h.fileName || "Sans_nom";
     if (!map.has(key)) map.set(key, []);
     map.get(key).push(h);
   }
@@ -11,48 +12,57 @@ function groupByFilename(hits = []) {
 }
 
 export default function ResultsByFile({ hits, query, onSelectUrl }) {
-  const groups = useMemo(() => groupByFilename(hits), [hits]);
+  const [displayHits, setDisplayHits] = useState(hits);
 
-  if (!hits?.length) {
+  // 🔹 Met à jour `displayHits` chaque fois que `hits` change
+  useEffect(() => {
+    console.log("Mise à jour des hits :", hits);
+    setDisplayHits(hits);
+  }, [hits]);
+
+  // 🔹 Recalcule les groupes quand displayHits change
+  const groups = useMemo(() => groupByFilename(displayHits), [displayHits]);
+
+  if (!displayHits?.length) {
     return <div className="no-results">Aucun résultat.</div>;
   }
 
   return (
-    <div className="accordion">
-      {Array.from(groups.entries()).map(([filename, items], idx) => {
-        const sortedItems = [...items].sort((a, b) => {
-          const pageA = a.page ?? 0;
-          const pageB = b.page ?? 0;
-          if (pageA !== pageB) return pageA - pageB;
-          const lineA = a.line ?? 0;
-          const lineB = b.line ?? 0;
-          return lineA - lineB;
-        });
+      <div className="accordion">
+        {Array.from(groups.entries()).map(([filename, items], idx) => {
+          const sortedItems = [...items].sort((a, b) => {
+            const pageA = a.page ?? 0;
+            const pageB = b.page ?? 0;
+            if (pageA !== pageB) return pageA - pageB;
+            const lineA = a.line ?? 0;
+            const lineB = b.line ?? 0;
+            return lineA - lineB;
+          });
 
-        return (
-          <details className="acc-item" key={filename} open={idx === 0}>
-            <summary className="acc-summary">
-              <span className="acc-filename">{filename}</span>
-              <span className="acc-count">
+          return (
+              <details className="acc-item" key={filename} open={idx === 0}>
+                <summary className="acc-summary">
+                  <span className="acc-filename">{filename}</span>
+                  <span className="acc-count">
                 {sortedItems.length} occurrence
-                {sortedItems.length > 1 ? "s" : ""}
+                    {sortedItems.length > 1 ? "s" : ""}
               </span>
-            </summary>
+                </summary>
 
-            <div className="acc-content">
-              {sortedItems.map((hit, i) => (
-                <Occurrence
-                  key={`${filename}-${i}`}
-                  hit={hit}
-                  query={query}
-                  onSelectUrl={onSelectUrl}
-                />
-              ))}
-            </div>
-          </details>
-        );
-      })}
-    </div>
+                <div className="acc-content">
+                  {sortedItems.map((hit, i) => (
+                      <Occurrence
+                          key={`${filename}-${i}`}
+                          hit={hit}
+                          query={query}
+                          onSelectUrl={onSelectUrl}
+                      />
+                  ))}
+                </div>
+              </details>
+          );
+        })}
+      </div>
   );
 }
 
@@ -62,9 +72,8 @@ function Occurrence({ hit, query, onSelectUrl }) {
   const highlight = (text, q) => {
     if (!q) return text;
     const regex = new RegExp(`(${q})`, "gi");
-    const parts = text.split(regex);
-    return parts.map((part, i) =>
-      regex.test(part) ? <mark key={i}>{part}</mark> : part
+    return text.split(regex).map((part, i) =>
+        regex.test(part) ? <mark key={i}>{part}</mark> : part
     );
   };
 
@@ -75,30 +84,30 @@ function Occurrence({ hit, query, onSelectUrl }) {
   };
 
   return (
-    <div className="occ">
-      <div className="occ-meta">
-        <span>Page {page ?? "?"}</span>
-        {typeof line !== "undefined" && <span> · ligne {line}</span>}
+      <div className="occ">
+        <div className="occ-meta">
+          <span>Page {page ?? "?"}</span>
+          {typeof line !== "undefined" && <span> · ligne {line}</span>}
+        </div>
+
+        {content && <div className="occ-content">{content}</div>}
+
+        {lineContent && (
+            <pre className="occ-line">{highlight(lineContent, query)}</pre>
+        )}
+
+        {url && (
+            <a
+                className="occ-link"
+                href={url}
+                onClick={openInViewer}
+                rel="noreferrer"
+            >
+              {url.startsWith("/pdf/")
+                  ? "Afficher à droite"
+                  : `Ouvrir ${filename || "le document"}`}
+            </a>
+        )}
       </div>
-
-      {content && <div className="occ-content">{content}</div>}
-
-      {lineContent && (
-        <pre className="occ-line">{highlight(lineContent, query)}</pre>
-      )}
-
-      {url && (
-        <a
-          className="occ-link"
-          href={url}
-          onClick={openInViewer}
-          rel="noreferrer"
-        >
-          {url.startsWith("/pdf/")
-            ? "Afficher à droite"
-            : `Ouvrir ${filename || "le document"}`}
-        </a>
-      )}
-    </div>
   );
 }
