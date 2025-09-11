@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSearch } from "@fortawesome/free-solid-svg-icons";
 import { Client } from "@stomp/stompjs";
 import { supabase } from "./supabaseClient";
+import UploadBox from "./components/UploadBox";
 
 function useDebouncedValue(value, delay = 250) {
   const [v, setV] = useState(value);
@@ -141,6 +142,11 @@ export default function App() {
   }, []);
 
   const user = session?.user ?? null;
+  const pseudo =
+  user?.user_metadata?.username
+  || user?.email?.split("@")[0]
+  || user?.id
+  || "Anonyme";
 
   const [q, setQ] = useState("");
   const debouncedQ = useDebouncedValue(q, 300);
@@ -201,7 +207,7 @@ export default function App() {
     if (stompClient.current?.connected) {
       stompClient.current.publish({
         destination: "/app/startSearch",
-        body: JSON.stringify({ query: debouncedQ, sessionId }),
+        body: JSON.stringify({ query: debouncedQ, sessionId, user: pseudo }),
       });
     } else {
       console.error("STOMP non connecté");
@@ -243,7 +249,10 @@ export default function App() {
             Connecté en tant que <strong>{user.email}</strong>
           </div>
         </div>
-        <button onClick={() => supabase.auth.signOut()}>Déconnexion</button>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <UploadBox user={user} />
+          <button onClick={() => supabase.auth.signOut()}>Déconnexion</button>
+        </div>
       </div>
 
       <div style={{ margin: "0 0", width: "50%", left: 0, padding: "16px", height: "fit-content" }}>
