@@ -33,3 +33,6 @@ build/
 .vscode/
 index/*
 logs/audit.log
+
+# Ignorer le dossier d'index Lucene
+/index/
