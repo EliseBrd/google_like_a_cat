@@ -151,6 +151,10 @@ export default function App() {
   const stompClient = useRef(null);
   const sessionId = user?.id || "user123";
 
+  // ⏱ Timer
+  const searchStartTime = useRef(null);
+  const [elapsedTime, setElapsedTime] = useState(null);
+
   useEffect(() => {
     if (!user) return;
     stompClient.current = new Client({
@@ -171,6 +175,14 @@ export default function App() {
               return;
             }
             const data = JSON.parse(message.body);
+
+            // ⏱ Calcul du temps jusqu’au premier résultat
+            if (searchStartTime.current) {
+              const elapsed = performance.now() - searchStartTime.current;
+              setElapsedTime(elapsed.toFixed(2)); // en ms
+              searchStartTime.current = null; // reset après premier résultat
+            }
+
             setHits((prev) => [...prev, data]);
           } catch (e) {
             console.error("Erreur parsing message:", e, message.body);
@@ -192,13 +204,16 @@ export default function App() {
       setHits([]);
       setSelectedUrl("");
       setLoading(false);
+      setElapsedTime(null);
       return;
     }
     setHits([]);
     setLoading(true);
     setError("");
+    setElapsedTime(null);
 
     if (stompClient.current?.connected) {
+      searchStartTime.current = performance.now();
       stompClient.current.publish({
         destination: "/app/startSearch",
         body: JSON.stringify({ query: debouncedQ, sessionId }),
@@ -274,6 +289,11 @@ export default function App() {
         {error && (
             <div style={{ marginTop: 8, fontSize: 14, color: "#c00" }}>
               Erreur: {error}
+            </div>
+        )}
+        {elapsedTime && (
+            <div style={{ marginTop: 8, fontSize: 14, color: "#0a0" }}>
+              Premier résultat reçu en {elapsedTime} ms
             </div>
         )}
       </div>

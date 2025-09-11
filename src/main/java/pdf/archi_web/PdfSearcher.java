@@ -41,7 +41,12 @@ public class PdfSearcher {
             QueryParser parser = new QueryParser("content", analyzer);
             Query q = parser.parse(query);
 
+            // ⏱ Démarrage du timer
+            long start = System.nanoTime();
+
             TopDocs docs = searcher.search(q, 100);
+            boolean firstResultFound = false;
+
             for (ScoreDoc sd : docs.scoreDocs) {
                 Document d = searcher.doc(sd.doc);
                 String filename = d.get("filename");
@@ -57,6 +62,15 @@ public class PdfSearcher {
                         String[] lines = paragraph.split("\\n");
                         for (int l = 0; l < lines.length; l++) {
                             if (lines[l].toLowerCase().contains(query.toLowerCase())) {
+
+                                // ⏱ Si c'est le premier résultat, on log le temps
+                                if (!firstResultFound) {
+                                    long elapsed = System.nanoTime() - start;
+                                    double elapsedMs = elapsed / 1_000_000.0;
+                                    System.out.println("⏱ Temps jusqu'au premier résultat : " + elapsedMs + " ms");
+                                    firstResultFound = true;
+                                }
+
                                 callback.onResult(new SearchResult(
                                         filename,
                                         page,
