@@ -35,7 +35,7 @@ public class StreamingService {
             });
 
             // (optionnel) notifier la fin :
-            // messagingTemplate.convertAndSend("/queue/results-" + sessionId, "COMPLETED");
+            messagingTemplate.convertAndSend("/queue/results-" + sessionId, "COMPLETED");
 
             // log complet
             audit.logSearchOk(user, query, all);

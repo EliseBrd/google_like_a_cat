@@ -53,19 +53,6 @@ function AuthUI() {
     }
   };
 
-  const signInWithGoogle = async () => {
-    setErr("");
-    setMsg("");
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: redirectTo,
-        queryParams: { access_type: "offline", prompt: "consent" },
-      },
-    });
-    if (error) setErr(error.message);
-  };
-
   const resetPassword = async () => {
     setErr("");
     setMsg("");
@@ -291,7 +278,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* Zone résultats et affichage PDF */}
       <div
         style={{
           display: "grid",
