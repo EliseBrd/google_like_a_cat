@@ -11,7 +11,7 @@ import java.nio.file.Path;
 @Component
 public class IndexInitializer {
 
-  @Value("${pdf.storage-dir:files/pdf}")
+  @Value("${pdf.storage-dir:resources/static/pdf}")
   private String storageDir;
 
   @PostConstruct
