@@ -189,19 +189,21 @@ mark {
 
 .pdfjs-page {
   position: relative;
-  line-height: 0;
-}
-.pdfjs-page canvas {
-  display: block;
 }
 .textLayer {
   position: absolute;
-  inset: 0;
-  pointer-events: none;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: auto;
+  user-select: text;
 }
-/* on laisse pdf_viewer.css gérer .textLayer > span */
-
-mark.pdfhl {
-  background: rgba(255, 235, 59, 0.6);
-  /* ne PAS mettre de padding, border, outline, font-weight, etc. */
+.textLayer .highlighted {
+  background: #ffea00;
+  outline: 2px solid rgba(255, 196, 0, 0.6);
+  outline-offset: 1px;
+  border-radius: 2px;
+  mix-blend-mode: multiply;
 }

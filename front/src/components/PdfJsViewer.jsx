@@ -14,9 +14,8 @@ function parseUrlAndPage(src) {
   return { url: base, page: Number.isFinite(page) ? Math.max(1, page) : 1 };
 }
 
-export default function PdfJsViewer({ src }) {
+export default function PdfJsViewer({ src, query }) {
   const { url, page: initialPage } = useMemo(() => parseUrlAndPage(src), [src]);
-
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
   const textLayerRef = useRef(null);
@@ -27,7 +26,6 @@ export default function PdfJsViewer({ src }) {
   const [error, setError] = useState("");
   const [containerWidth, setContainerWidth] = useState(0);
 
-  // Observer de redimensionnement pour ajuster l'échelle
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -39,11 +37,8 @@ export default function PdfJsViewer({ src }) {
     return () => ro.disconnect();
   }, []);
 
-  // Charger le PDF (binaire)
   useEffect(() => {
     let cancelled = false;
-    let loadingTask = null;
-
     (async () => {
       setError("");
       setPdfDoc(null);
@@ -51,76 +46,65 @@ export default function PdfJsViewer({ src }) {
       if (!url) return;
 
       try {
-        const res = await fetch(encodeURI(url), {
+        const safeUrl = encodeURI(url);
+        const res = await fetch(safeUrl, {
           credentials: "same-origin",
           headers: { Accept: "application/pdf" },
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
+        const ct = (res.headers.get("content-type") || "").toLowerCase();
+        if (!ct.includes("pdf")) {
+          console.warn("Attention: content-type non PDF:", ct);
+        }
+
         const data = await res.arrayBuffer();
         if (cancelled) return;
 
-        loadingTask = pdfjsLib.getDocument({ data });
-        const doc = await loadingTask.promise;
-        if (cancelled) {
-          // Libère le doc si arrivé trop tard
-          try { doc.cleanup?.(); doc.destroy?.(); } catch {}
-          return;
-        }
+        const task = pdfjsLib.getDocument({ data });
+        const doc = await task.promise;
+        if (cancelled) return;
 
         setPdfDoc(doc);
         setNumPages(doc.numPages);
       } catch (e) {
-        if (!cancelled) setError(e?.message || "Impossible de charger le PDF.");
+        console.error("PDF load error:", e);
+        if (!cancelled) setError(e.message || "Impossible de charger le PDF.");
       }
     })();
-
-    return () => {
-      cancelled = true;
-      try {
-        loadingTask?.destroy?.();
-      } catch {}
-    };
+    return () => { cancelled = true; };
   }, [url]);
 
-  // Sync page initiale extraite de l'URL
   useEffect(() => {
     setPageNumber(initialPage);
   }, [initialPage]);
 
-  // Rendu d'une page
   useEffect(() => {
     let cancelled = false;
-
     (async () => {
       if (!pdfDoc || !pageNumber) return;
-
       const page = await pdfDoc.getPage(pageNumber);
       if (cancelled) return;
 
+      const container = containerRef.current;
       const canvas = canvasRef.current;
       const textLayerDiv = textLayerRef.current;
-      if (!canvas || !textLayerDiv) return;
+      if (!container || !canvas || !textLayerDiv) return;
 
-      // Ajuste à la largeur du conteneur
       const baseVp = page.getViewport({ scale: 1 });
-      const desiredWidth = Math.max(320, containerWidth || 800);
+      const desiredWidth = Math.max(320, container.clientWidth || containerWidth || 800);
       const scale = desiredWidth / baseVp.width;
       const vp = page.getViewport({ scale });
 
       const ctx = canvas.getContext("2d", { alpha: false });
-      const w = Math.floor(vp.width);
-      const h = Math.floor(vp.height);
+      canvas.width = Math.floor(vp.width);
+      canvas.height = Math.floor(vp.height);
+      canvas.style.width = `${Math.floor(vp.width)}px`;
+      canvas.style.height = `${Math.floor(vp.height)}px`;
 
-      canvas.width = w;
-      canvas.height = h;
-      canvas.style.width = `${w}px`;
-      canvas.style.height = `${h}px`;
-
-      // Reset textLayer
       textLayerDiv.innerHTML = "";
-      textLayerDiv.style.width = `${w}px`;
-      textLayerDiv.style.height = `${h}px`;
+      textLayerDiv.style.width = `${Math.floor(vp.width)}px`;
+      textLayerDiv.style.height = `${Math.floor(vp.height)}px`;
 
       await page.render({ canvasContext: ctx, viewport: vp }).promise;
       if (cancelled) return;
@@ -128,12 +112,11 @@ export default function PdfJsViewer({ src }) {
       const textContent = await page.getTextContent();
       await pdfjsLib.renderTextLayer({ textContent, container: textLayerDiv, viewport: vp }).promise;
 
-      // Laisse le DOM peindre
       await new Promise((r) => requestAnimationFrame(r));
-    })();
 
+    })();
     return () => { cancelled = true; };
-  }, [pdfDoc, pageNumber, containerWidth]);
+  }, [pdfDoc, pageNumber, query, containerWidth]);
 
   const goTo = (n) => setPageNumber((p) => Math.max(1, Math.min(n, numPages || 1)));
 
