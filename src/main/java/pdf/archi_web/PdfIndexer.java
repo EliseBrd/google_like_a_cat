@@ -11,16 +11,6 @@ import org.apache.lucene.store.*;
 import java.io.File;
 import java.io.IOException;
 
-import org.apache.pdfbox.Loader;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
-import org.apache.lucene.document.*;
-import org.apache.lucene.index.*;
-import org.apache.lucene.store.*;
-import java.io.File;
-import java.io.IOException;
-import org.apache.pdfbox.text.PDFTextStripper;
-
 public class PdfIndexer {
 
     private final Directory indexDirectory;
