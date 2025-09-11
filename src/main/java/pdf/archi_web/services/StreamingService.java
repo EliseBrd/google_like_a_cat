@@ -16,13 +16,11 @@ public class StreamingService {
 
     public void streamResultsForUser(String sessionId, String query) {
         try {
-            PdfSearcher searcher = new PdfSearcher("index"); // réutilise ton index existant
+            PdfSearcher searcher = new PdfSearcher("index"); 
             searcher.search(query, result -> {
-                // Envoi du résultat uniquement à cet utilisateur
                 messagingTemplate.convertAndSend("/queue/results-" + sessionId, result);
             });
-            // Signal que la recherche est terminée
-            //messagingTemplate.convertAndSend("/queue/results-" + sessionId, "COMPLETED");
+            messagingTemplate.convertAndSend("/queue/results-" + sessionId, "COMPLETED");
 
         } catch (Exception e) {
             messagingTemplate.convertAndSendToUser(sessionId, "/queue/results",
