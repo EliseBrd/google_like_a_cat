@@ -3,7 +3,6 @@ import React, { useEffect, useMemo, useState } from "react";
 function groupByFilename(hits = []) {
   const map = new Map();
   for (const h of hits) {
-    // Sécurise l'accès au nom du fichier
     const key = h.filename || h.fileName || "Sans_nom";
     if (!map.has(key)) map.set(key, []);
     map.get(key).push(h);
@@ -14,13 +13,10 @@ function groupByFilename(hits = []) {
 export default function ResultsByFile({ hits, query, onSelectUrl }) {
   const [displayHits, setDisplayHits] = useState(hits);
 
-  // 🔹 Met à jour `displayHits` chaque fois que `hits` change
   useEffect(() => {
-    console.log("Mise à jour des hits :", hits);
     setDisplayHits(hits);
   }, [hits]);
 
-  // 🔹 Recalcule les groupes quand displayHits change
   const groups = useMemo(() => groupByFilename(displayHits), [displayHits]);
 
   if (!displayHits?.length) {

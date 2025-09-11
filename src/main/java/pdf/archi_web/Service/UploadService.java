@@ -16,7 +16,6 @@ public class UploadService {
     private final PdfIndexer indexer;
 
     public UploadService() throws Exception {
-        // chemin vers resources/static/pdf en dev
         this.storageDir = Path.of("src/main/resources/static/pdf").toAbsolutePath().normalize();
         Files.createDirectories(this.storageDir);
 
