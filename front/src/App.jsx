@@ -106,9 +106,6 @@ function AuthUI() {
         <button type="submit" disabled={loading}>
           {loading ? "..." : mode === "signup" ? "Créer" : "Se connecter"}
         </button>
-        <button type="button" onClick={signInWithGoogle}>
-          Continuer avec Google
-        </button>
         <button type="button" onClick={resetPassword}>
           Mot de passe oublié ?
         </button>
