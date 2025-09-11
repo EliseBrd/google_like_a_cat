@@ -23,15 +23,16 @@ public class SearchWebSocketController {
     public void startSearch(@Payload SearchRequest request, SimpMessageHeaderAccessor headerAccessor) {
         String sessionId = headerAccessor.getSessionId();
         System.out.println("Recherche démarrée pour la session: " + sessionId + " query=" + request.getQuery());
-        streamingService.streamResultsForUser(request.getSessionId(), request.getQuery());
+        streamingService.streamResultsForUser(request.getSessionId(), request.getQuery(), request.getUser() == null ? "Maxime" : request.getUser());
+        
     }
 
 
-    @Setter
-    @Getter
+    @Setter @Getter
     public static class SearchRequest {
         private String query;
-        private String sessionId;
-
+        private String sessionId; // client hint (non utilisé pour router)
+        private String user = "Maxime";
     }
+
 }
