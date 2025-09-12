@@ -120,6 +120,16 @@ export default function App() {
           console.error("Erreur parsing message:", e, message.body);
         }
       });
+
+        const warmupSessionId = `${sessionId}-warmup-${Date.now()}`;
+        stompClient.current.publish({
+            destination: "/app/startSearch",
+            body: JSON.stringify({
+                query: "warmup",
+                sessionId: warmupSessionId,
+                user: "warmup"
+            }),
+        });
     };
 
     client.activate();
