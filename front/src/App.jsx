@@ -73,7 +73,10 @@ function AuthUI() {
         padding: 16,
       }}
     >
-      <form onSubmit={submit} style={{ display: "grid", gap: 8, width: 320,  height: "fit-content" }}>
+      <form
+        onSubmit={submit}
+        style={{ display: "grid", gap: 8, width: 320, height: "fit-content" }}
+      >
         <h2 style={{ marginBottom: 8 }}>
           {mode === "signup" ? "Créer un compte" : "Se connecter"}
         </h2>
@@ -124,6 +127,7 @@ function AuthUI() {
 export default function App() {
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const firstResultMs = useRef(null);
 
   useEffect(() => {
     let mounted = true;
@@ -143,10 +147,10 @@ export default function App() {
 
   const user = session?.user ?? null;
   const pseudo =
-  user?.user_metadata?.username
-  || user?.email?.split("@")[0]
-  || user?.id
-  || "Anonyme";
+    user?.user_metadata?.username ||
+    user?.email?.split("@")[0] ||
+    user?.id ||
+    "Anonyme";
 
   const [q, setQ] = useState("");
   const debouncedQ = useDebouncedValue(q, 300);
@@ -172,21 +176,74 @@ export default function App() {
       console.log("STOMP connecté");
       stompClient.current.subscribe(
         `/queue/results-${sessionId}`,
-        (message) => {
+        async (message) => {
           try {
-            console.log(message)
+            console.log(message);
+
+            // ✅ Recherche terminée
             if (message.body === "COMPLETED") {
               console.log("Recherche terminée");
               setLoading(false);
+
+              const ms_total = searchStartTime.current
+                ? performance.now() - searchStartTime.current
+                : null;
+
+              try {
+                await supabase.from("search_history").insert({
+                  user_id: user.id,
+                  session_id: sessionId,
+                  query: debouncedQ,
+                  status: "completed",
+                  result_count: hits.length,
+                  ms_first_result: firstResultMs.current ?? null,
+                  ms_total: ms_total ?? null,
+                });
+              } catch (e) {
+                console.error("Insert history error:", e);
+              }
+
+              firstResultMs.current = null;
               return;
             }
+
+            // ❌ Erreur côté serveur
+            if (message.body?.startsWith("ERROR:")) {
+              const errMsg = message.body.slice("ERROR: ".length);
+              setError(errMsg);
+              setLoading(false);
+
+              const ms_total = searchStartTime.current
+                ? performance.now() - searchStartTime.current
+                : null;
+
+              try {
+                await supabase.from("search_history").insert({
+                  user_id: user.id,
+                  session_id: sessionId,
+                  query: debouncedQ,
+                  status: "error",
+                  result_count: hits.length,
+                  ms_first_result: firstResultMs.current ?? null,
+                  ms_total: ms_total ?? null,
+                  error: errMsg,
+                });
+              } catch (e) {
+                console.error("Insert history error:", e);
+              }
+
+              firstResultMs.current = null;
+              return;
+            }
+
+            // 📄 Résultat normal
             const data = JSON.parse(message.body);
 
-            // ⏱ Calcul du temps jusqu’au premier résultat
             if (searchStartTime.current) {
               const elapsed = performance.now() - searchStartTime.current;
-              setElapsedTime(elapsed.toFixed(2)); // en ms
-              searchStartTime.current = null; // reset après premier résultat
+              setElapsedTime(elapsed.toFixed(2)); // UI
+              firstResultMs.current = elapsed; // --- HISTO ---
+              searchStartTime.current = null; // reset après 1er résultat
             }
 
             setHits((prev) => [...prev, data]);
@@ -245,7 +302,11 @@ export default function App() {
 
   return (
     <div
-      style={{ height: "fit-content", display: "grid", gridTemplateRows: "auto 1fr" }}
+      style={{
+        height: "fit-content",
+        display: "grid",
+        gridTemplateRows: "auto 1fr",
+      }}
     >
       <div
         style={{
@@ -270,7 +331,15 @@ export default function App() {
         </div>
       </div>
 
-      <div style={{ margin: "0 0", width: "50%", left: 0, padding: "16px", height: "fit-content" }}>
+      <div
+        style={{
+          margin: "0 0",
+          width: "50%",
+          left: 0,
+          padding: "16px",
+          height: "fit-content",
+        }}
+      >
         <div style={{ position: "relative", width: "100%" }}>
           <FontAwesomeIcon
             icon={faSearch}
@@ -291,19 +360,19 @@ export default function App() {
           />
         </div>
         {loading && (
-            <div style={{ marginTop: 8, fontSize: 14, color: "#666" }}>
-              Recherche en cours...
-            </div>
+          <div style={{ marginTop: 8, fontSize: 14, color: "#666" }}>
+            Recherche en cours...
+          </div>
         )}
         {error && (
-            <div style={{ marginTop: 8, fontSize: 14, color: "#c00" }}>
-              Erreur: {error}
-            </div>
+          <div style={{ marginTop: 8, fontSize: 14, color: "#c00" }}>
+            Erreur: {error}
+          </div>
         )}
         {elapsedTime && (
-            <div style={{ marginTop: 8, fontSize: 14, color: "#0a0" }}>
-              Premier résultat reçu en {elapsedTime} ms
-            </div>
+          <div style={{ marginTop: 8, fontSize: 14, color: "#0a0" }}>
+            Premier résultat reçu en {elapsedTime} ms
+          </div>
         )}
       </div>
 
