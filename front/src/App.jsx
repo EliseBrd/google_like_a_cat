@@ -7,172 +7,160 @@ import { Client } from "@stomp/stompjs";
 import { supabase } from "./supabaseClient";
 import Navbar from "./components/Navbar";
 
-function useDebouncedValue(value, delay = 250) {
-  const [v, setV] = useState(value);
-  useEffect(() => {
-    const t = setTimeout(() => setV(value), delay);
-    return () => clearTimeout(t);
-  }, [value, delay]);
-  return v;
-}
-
 export default function App() {
   const [session, setSession] = useState(null);
-  const firstResultMs = useRef(null);
-
   useEffect(() => {
     let mounted = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      setSession(data.session ?? null);
-    });
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => {
-      setSession(sess ?? null);
-    });
-    return () => {
-      mounted = false;
-      sub.subscription.unsubscribe();
-    };
+    supabase.auth.getSession().then(({ data }) => mounted && setSession(data.session ?? null));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, sess) => setSession(sess ?? null));
+    return () => sub.subscription.unsubscribe();
   }, []);
-
   const user = session?.user ?? null;
   const pseudo =
     user?.user_metadata?.username ||
     user?.email?.split("@")[0] ||
     user?.id ||
     "Anonyme";
+  const sessionId = user?.id || "user123";
 
-  const [q, setQ] = useState("");
-  const debouncedQ = useDebouncedValue(q, 300);
+  const [q, setQ] = useState("");                
+  const [searchQuery, setSearchQuery] = useState("");
   const [hits, setHits] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [selectedUrl, setSelectedUrl] = useState("");
-  const stompClient = useRef(null);
-  const sessionId = user?.id || "user123";
-
-  const searchStartTime = useRef(null);
   const [elapsedTime, setElapsedTime] = useState(null);
+
+  const stompClient = useRef(null);
+  const startedAt = useRef(null);       
+  const firstResultMs = useRef(null);    
+  const resultsCountRef = useRef(0);     
 
   useEffect(() => {
     if (!user) return;
-    stompClient.current = new Client({
+
+    const client = new Client({
       brokerURL: "ws://localhost:8080/ws",
       reconnectDelay: 5000,
+      debug: (s) => console.log(s),
     });
 
-    stompClient.current.onConnect = () => {
+    client.onConnect = () => {
       console.log("STOMP connecté");
-      stompClient.current.subscribe(
-        `/queue/results-${sessionId}`,
-        async (message) => {
-          try {
-            if (message.body === "COMPLETED") {
-              console.log("Recherche terminée");
-              setLoading(false);
+      client.subscribe(`/queue/results-${sessionId}`, async (message) => {
+        try {
+          if (message.body === "COMPLETED") {
+            setLoading(false);
+            const ms_total = startedAt.current ? performance.now() - startedAt.current : null;
 
-              const ms_total = searchStartTime.current
-                ? performance.now() - searchStartTime.current
-                : null;
-
-              try {
-                await supabase.from("search_history").insert({
+            if (user && searchQuery.trim()) {
+              supabase
+                .from("search_history")
+                .insert({
                   user_id: user.id,
                   session_id: sessionId,
-                  query: debouncedQ,
+                  query: searchQuery,
                   status: "completed",
-                  result_count: hits.length,
+                  result_count: resultsCountRef.current,
                   ms_first_result: firstResultMs.current ?? null,
                   ms_total: ms_total ?? null,
+                })
+                .then(({ error }) => {
+                  if (error) console.error("Insert history error:", error);
                 });
-              } catch (e) {
-                console.error("Insert history error:", e);
-              }
-
-              firstResultMs.current = null;
-              return;
             }
 
-            // ❌ Erreur côté serveur
-            if (message.body?.startsWith("ERROR:")) {
-              const errMsg = message.body.slice("ERROR: ".length);
-              setError(errMsg);
-              setLoading(false);
+            startedAt.current = null;
+            firstResultMs.current = null;
+            resultsCountRef.current = 0;
+            return;
+          }
 
-              const ms_total = searchStartTime.current
-                ? performance.now() - searchStartTime.current
-                : null;
+          if (message.body?.startsWith("ERROR:")) {
+            const errMsg = message.body.slice("ERROR: ".length);
+            setError(errMsg);
+            setLoading(false);
+            const ms_total = startedAt.current ? performance.now() - startedAt.current : null;
 
-              try {
-                await supabase.from("search_history").insert({
+            if (user && searchQuery.trim()) {
+              supabase
+                .from("search_history")
+                .insert({
                   user_id: user.id,
                   session_id: sessionId,
-                  query: debouncedQ,
+                  query: searchQuery,
                   status: "error",
-                  result_count: hits.length,
+                  result_count: resultsCountRef.current,
                   ms_first_result: firstResultMs.current ?? null,
                   ms_total: ms_total ?? null,
                   error: errMsg,
+                })
+                .then(({ error }) => {
+                  if (error) console.error("Insert history error:", error);
                 });
-              } catch (e) {
-                console.error("Insert history error:", e);
-              }
-
-              firstResultMs.current = null;
-              return;
             }
 
-            // 📄 Résultat normal
-            const data = JSON.parse(message.body);
-
-            if (searchStartTime.current) {
-              const elapsed = performance.now() - searchStartTime.current;
-              setElapsedTime(elapsed.toFixed(2)); // UI
-              firstResultMs.current = elapsed; // --- HISTO ---
-              searchStartTime.current = null; // reset après 1er résultat
-            }
-
-            setHits((prev) => [...prev, data]);
-          } catch (e) {
-            console.error("Erreur parsing message:", e, message.body);
+            startedAt.current = null;
+            firstResultMs.current = null;
+            resultsCountRef.current = 0;
+            return;
           }
+
+          const data = JSON.parse(message.body);
+
+          if (firstResultMs.current == null && startedAt.current) {
+            const elapsed = performance.now() - startedAt.current;
+            firstResultMs.current = elapsed;
+            setElapsedTime(elapsed.toFixed(2));
+          }
+
+          resultsCountRef.current += 1;
+          setHits((prev) => [...prev, data]);
+        } catch (e) {
+          console.error("Erreur parsing message:", e, message.body);
         }
-      );
+      });
     };
 
-    stompClient.current.activate();
+    client.activate();
+    stompClient.current = client;
 
     return () => {
-      if (stompClient.current) stompClient.current.deactivate();
+      client.deactivate();
     };
-  }, [user, sessionId]);
+  }, [user, sessionId, searchQuery]);
 
-  useEffect(() => {
-    if (!user) return;
-    if (!debouncedQ.trim()) {
-      setHits([]);
-      setSelectedUrl("");
-      setLoading(false);
-      setElapsedTime(null);
-      return;
-    }
+  const startSearch = (query) => {
+    const qTrim = (query || "").trim();
+    if (!qTrim) return;
+
+    setSearchQuery(qTrim);
     setHits([]);
-    setLoading(true);
+    setSelectedUrl("");
     setError("");
     setElapsedTime(null);
+    resultsCountRef.current = 0;
+    firstResultMs.current = null;
+    startedAt.current = performance.now();
+    setLoading(true);
 
     if (stompClient.current?.connected) {
-      searchStartTime.current = performance.now();
       stompClient.current.publish({
         destination: "/app/startSearch",
-        body: JSON.stringify({ query: debouncedQ, sessionId, user: pseudo }),
+        body: JSON.stringify({ query: qTrim, sessionId, user: pseudo }),
       });
     } else {
-      console.error("STOMP non connecté");
       setError("Impossible de se connecter au serveur WebSocket");
       setLoading(false);
     }
-  }, [debouncedQ, user, sessionId]);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      startSearch(q);
+    }
+  };
 
   useEffect(() => {
     if (hits?.length) {
@@ -182,6 +170,8 @@ export default function App() {
       setSelectedUrl("");
     }
   }, [hits]);
+
+  if (!user) return null;
 
   return (
     <>
@@ -193,7 +183,7 @@ export default function App() {
           gridTemplateRows: "auto 1fr",
         }}
       >
-
+        
         <div
           style={{
             margin: "0 0",
@@ -203,25 +193,30 @@ export default function App() {
             height: "fit-content",
           }}
         >
-          <div style={{ position: "relative", width: "100%" }}>
-            <FontAwesomeIcon
-              icon={faSearch}
-              style={{
-                position: "absolute",
-                left: 12,
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: "#888",
-                pointerEvents: "none",
-              }}
-            />
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Tapez votre requête…"
-              className="search-input"
-            />
+          <div style={{ position: "relative", width: "100%", display: "flex", gap: 8 }}>
+            <div style={{ position: "relative", flex: 1 }}>
+              <FontAwesomeIcon
+                icon={faSearch}
+                style={{
+                  position: "absolute",
+                  left: 12,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  color: "#888",
+                  pointerEvents: "none",
+                }}
+              />
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Tapez votre requête…"
+                className="search-input"
+                style={{ width: "100%", paddingLeft: 36 }}
+              />
+            </div>
           </div>
+
           {loading && (
             <div style={{ marginTop: 8, fontSize: 14, color: "#666" }}>
               Recherche en cours...
@@ -239,6 +234,7 @@ export default function App() {
           )}
         </div>
 
+        {/* Résultats + Viewer */}
         <div
           style={{
             display: "grid",
@@ -254,12 +250,12 @@ export default function App() {
           <div style={{ overflow: "auto", paddingRight: 4 }}>
             <ResultsByFile
               hits={hits}
-              query={debouncedQ}
+              query={searchQuery}
               onSelectUrl={(url) => setSelectedUrl(url)}
             />
           </div>
 
-          <PdfJsViewer src={selectedUrl} query={debouncedQ} />
+          <PdfJsViewer src={selectedUrl} query={searchQuery} />
         </div>
       </div>
     </>

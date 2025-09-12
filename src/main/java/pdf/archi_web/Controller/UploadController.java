@@ -27,6 +27,7 @@ public class UploadController {
         try {
             var res = uploadService.storeAndIndex(file);
             audit.logUploadOk(user, res.getFilename(), file.getSize());
+            audit.logUploadOk(user, res.getFilename(), file.getSize(), res.getUrl());
             return ResponseEntity.ok(res);
         } catch (IllegalArgumentException iae) {
             audit.logUploadError(user, filename, iae.getMessage());

@@ -29,13 +29,13 @@ export default function HistoryPage() {
 
   const user = session?.user ?? null;
 
-  // --- Data état
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [page, setPage] = useState(0);
   const [q, setQ] = useState("");
   const [total, setTotal] = useState(null);
+  const [clearing, setClearing] = useState(false);
 
   const from = page * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
@@ -67,12 +67,10 @@ export default function HistoryPage() {
   };
 
   useEffect(() => {
-    if (!user) return; // on attend l’auth (RLS)
+    if (!user) return; 
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, user]);
 
-  // petite latence pour le filtre texte
   useEffect(() => {
     if (!user) return;
     const t = setTimeout(() => {
@@ -80,10 +78,8 @@ export default function HistoryPage() {
       load();
     }, 300);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q, user]);
 
-  // Realtime (écoute des changements)
   useEffect(() => {
     if (!user) return;
     const ch = supabase
@@ -133,6 +129,33 @@ export default function HistoryPage() {
     URL.revokeObjectURL(url);
   };
 
+  const clearHistory = async () => {
+    if (!user) return;
+    const ok = window.confirm(
+      "Confirmer la suppression de tout l'historique ? Cette action est irréversible."
+    );
+    if (!ok) return;
+
+    setClearing(true);
+    setError("");
+    try {
+      const { error } = await supabase
+        .from("search_history")
+        .delete()
+        .eq("user_id", user.id);
+      if (error) throw error;
+
+      setRows([]);
+      setTotal(0);
+      setPage(0);
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setClearing(false);
+    }
+  };
+
   const relaunch = (query) => {
     navigate(`/?q=${encodeURIComponent(query)}`);
   };
@@ -162,7 +185,6 @@ export default function HistoryPage() {
       <Navbar user={user} />
 
       <div style={{ padding: 16, display: "grid", gap: 12, maxWidth: 1000, margin: "0 auto" }}>
-        {/* En-tête de page */}
         <div
           style={{
             display: "flex",
@@ -185,14 +207,29 @@ export default function HistoryPage() {
                 border: "1px solid #e5e5e5",
                 background: "#fff",
                 cursor: "pointer",
+                color: "black"
               }}
             >
               Exporter CSV
             </button>
+            <button
+              onClick={clearHistory}
+              disabled={clearing || total === 0}
+              style={{
+                padding: "8px 12px",
+                borderRadius: 8,
+                border: "1px solid #c00",
+                background: clearing ? "#fef2f2" : "#fff",
+                color: "#c00",
+                cursor: clearing || total === 0 ? "not-allowed" : "pointer",
+              }}
+              title="Supprimer tout l'historique"
+            >
+              {clearing ? "Suppression…" : "Vider l'historique"}
+            </button>
           </div>
         </div>
 
-        {/* Filtres */}
         <section style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <input
             placeholder="Filtrer par texte…"
@@ -208,7 +245,6 @@ export default function HistoryPage() {
           />
         </section>
 
-        {/* Liste */}
         {loading ? (
           <div>Chargement…</div>
         ) : error ? (
