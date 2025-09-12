@@ -6,15 +6,6 @@ import { faSearch } from "@fortawesome/free-solid-svg-icons";
 import { Client } from "@stomp/stompjs";
 import { supabase } from "./supabaseClient";
 
-function useDebouncedValue(value, delay = 250) {
-  const [v, setV] = useState(value);
-  useEffect(() => {
-    const t = setTimeout(() => setV(value), delay);
-    return () => clearTimeout(t);
-  }, [value, delay]);
-  return v;
-}
-
 function AuthUI() {
   const [mode, setMode] = useState("signin");
   const [email, setEmail] = useState("");
@@ -143,13 +134,14 @@ export default function App() {
   const user = session?.user ?? null;
 
   const [q, setQ] = useState("");
-  const debouncedQ = useDebouncedValue(q, 300);
+  /*const debouncedQ = useDebouncedValue(q, 300);*/
   const [hits, setHits] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [selectedUrl, setSelectedUrl] = useState("");
   const stompClient = useRef(null);
   const sessionId = user?.id || "user123";
+  const [searchQuery, setSearchQuery] = useState("");
 
   // ⏱ Timer
   const searchStartTime = useRef(null);
@@ -198,15 +190,10 @@ export default function App() {
     };
   }, [user, sessionId]);
 
-  useEffect(() => {
-    if (!user) return;
-    if (!debouncedQ.trim()) {
-      setHits([]);
-      setSelectedUrl("");
-      setLoading(false);
-      setElapsedTime(null);
-      return;
-    }
+  // 🚀 Fonction manuelle de lancement de recherche
+  const startSearch = (query) => {
+    if (!query.trim()) return;
+
     setHits([]);
     setLoading(true);
     setError("");
@@ -216,14 +203,22 @@ export default function App() {
       searchStartTime.current = performance.now();
       stompClient.current.publish({
         destination: "/app/startSearch",
-        body: JSON.stringify({ query: debouncedQ, sessionId }),
+        body: JSON.stringify({ query, sessionId }),
       });
     } else {
-      console.error("STOMP non connecté");
       setError("Impossible de se connecter au serveur WebSocket");
       setLoading(false);
     }
-  }, [debouncedQ, user, sessionId]);
+  };
+
+  // ⚡ Gérer l’appui sur Entrée
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      setSearchQuery(q);
+      startSearch(q);
+    }
+  };
 
   useEffect(() => {
     if (hits?.length) {
@@ -277,7 +272,8 @@ export default function App() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Tapez votre requête…"
+            onKeyDown={handleKeyDown} // ⬅️ ici
+            placeholder="Tapez votre requête et appuyez sur Entrée…"
             className="search-input"
           />
         </div>
@@ -313,12 +309,12 @@ export default function App() {
         <div style={{ overflow: "auto", paddingRight: 4 }}>
           <ResultsByFile
             hits={hits}
-            query={debouncedQ}
+            query={searchQuery}
             onSelectUrl={(url) => setSelectedUrl(url)}
           />
         </div>
 
-        <PdfJsViewer src={selectedUrl} query={debouncedQ} />
+        <PdfJsViewer src={selectedUrl} query={searchQuery} />
       </div>
     </div>
   );
