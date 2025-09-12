@@ -1,10 +1,9 @@
-// src/HistoryPage.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
 import { supabase } from "../supabaseClient";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 
 export default function HistoryPage() {
   const navigate = useNavigate();
@@ -98,7 +97,6 @@ export default function HistoryPage() {
     return () => {
       supabase.removeChannel(ch);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const totalPages = useMemo(
@@ -261,7 +259,6 @@ export default function HistoryPage() {
           </div>
         )}
 
-        {/* Pagination */}
         <footer
           style={{
             display: "flex",

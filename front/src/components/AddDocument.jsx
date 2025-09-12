@@ -160,7 +160,6 @@ export default function AddDocument() {
             gap: 16,
           }}
         >
-          {/* Dropzone */}
           <div
             ref={dropRef}
             style={{
@@ -190,7 +189,6 @@ export default function AddDocument() {
             />
           </div>
 
-          {/* Fichier sélectionné */}
           {file && (
             <div
               style={{
@@ -225,7 +223,7 @@ export default function AddDocument() {
                   cursor: "pointer",
                 }}
               >
-                <FontAwesomeIcon icon={faTrash} />
+                <FontAwesomeIcon icon={faTrash} color="black"/>
               </button>
             </div>
           )}
