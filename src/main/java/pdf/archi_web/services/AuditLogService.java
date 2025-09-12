@@ -32,9 +32,15 @@ public class AuditLogService {
     /* ----------------- Upload ----------------- */
 
     public void logUploadOk(String user, String filename, long sizeBytes) {
+        // compat rétro: appelle la version enrichie sans URL
+        logUploadOk(user, filename, sizeBytes, null);
+    }
+
+    public void logUploadOk(String user, String filename, long sizeBytes, String url) {
         String line = formatBase("UPLOAD", user, "OK")
-                + " | fichier=" + filename
-                + " | taille=" + sizeBytes + " octets";
+                + " | fichier=" + (filename == null ? "" : filename)
+                + " | taille=" + sizeBytes + " octets"
+                + (url == null ? "" : " | url=" + safe(url));
         write(line);
     }
 
@@ -48,27 +54,16 @@ public class AuditLogService {
     /* ----------------- Search ----------------- */
 
     public void logSearchOk(String user, String query, List<SearchResult> results) {
-        if (results == null || results.isEmpty()) {
-            String line = formatBase("SEARCH", user, "OK")
-                    + " | query=\"" + query + "\" | aucun résultat";
-            write(line);
-            return;
-        }
-        for (SearchResult r : results) {
-            String line = formatBase("SEARCH", user, "OK")
-                    + " | query=\"" + query + "\""
-                    + " | fichier=" + r.getFilename()
-                    + " | page=" + r.getPage()
-                    + " | paragraphe=" + r.getParagraph()
-                    + " | ligne=" + r.getLine()
-                    + " | extrait=" + r.getLineContent();
-            write(line);
-        }
+        int n = (results == null) ? 0 : results.size();
+        String line = formatBase("SEARCH", user, "OK")
+                + " | query=\"" + safe(query) + "\""
+                + " | occurrences=" + n;
+        write(line);
     }
 
     public void logSearchError(String user, String query, String error) {
         String line = formatBase("SEARCH", user, "ERROR")
-                + " | query=\"" + query + "\""
+                + " | query=\"" + safe(query) + "\""
                 + " | erreur=" + safe(error);
         write(line);
     }
