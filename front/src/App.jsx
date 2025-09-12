@@ -5,6 +5,16 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSearch } from "@fortawesome/free-solid-svg-icons";
 import { Client } from "@stomp/stompjs";
 import { supabase } from "./supabaseClient";
+import UploadBox from "./components/UploadBox";
+
+function useDebouncedValue(value, delay = 250) {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setV(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return v;
+}
 
 function AuthUI() {
   const [mode, setMode] = useState("signin");
@@ -132,16 +142,20 @@ export default function App() {
   }, []);
 
   const user = session?.user ?? null;
+  const pseudo =
+  user?.user_metadata?.username
+  || user?.email?.split("@")[0]
+  || user?.id
+  || "Anonyme";
 
   const [q, setQ] = useState("");
-  /*const debouncedQ = useDebouncedValue(q, 300);*/
+  const debouncedQ = useDebouncedValue(q, 300);
   const [hits, setHits] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [selectedUrl, setSelectedUrl] = useState("");
   const stompClient = useRef(null);
   const sessionId = user?.id || "user123";
-  const [searchQuery, setSearchQuery] = useState("");
 
   // ⏱ Timer
   const searchStartTime = useRef(null);
@@ -190,10 +204,15 @@ export default function App() {
     };
   }, [user, sessionId]);
 
-  // 🚀 Fonction manuelle de lancement de recherche
-  const startSearch = (query) => {
-    if (!query.trim()) return;
-
+  useEffect(() => {
+    if (!user) return;
+    if (!debouncedQ.trim()) {
+      setHits([]);
+      setSelectedUrl("");
+      setLoading(false);
+      setElapsedTime(null);
+      return;
+    }
     setHits([]);
     setLoading(true);
     setError("");
@@ -203,9 +222,10 @@ export default function App() {
       searchStartTime.current = performance.now();
       stompClient.current.publish({
         destination: "/app/startSearch",
-        body: JSON.stringify({ query, sessionId }),
+        body: JSON.stringify({ query: debouncedQ, sessionId }),
       });
     } else {
+      console.error("STOMP non connecté");
       setError("Impossible de se connecter au serveur WebSocket");
       setLoading(false);
     }
@@ -253,7 +273,10 @@ export default function App() {
             Connecté en tant que <strong>{user.email}</strong>
           </div>
         </div>
-        <button onClick={() => supabase.auth.signOut()}>Déconnexion</button>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <UploadBox user={user} />
+          <button onClick={() => supabase.auth.signOut()}>Déconnexion</button>
+        </div>
       </div>
 
       <div style={{ margin: "0 0", width: "50%", left: 0, padding: "16px", height: "fit-content" }}>
