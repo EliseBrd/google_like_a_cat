@@ -11,6 +11,8 @@ function parseUrlAndPage(src) {
   const [base, hash = ""] = src.split("#");
   const params = new URLSearchParams(hash.replace(/^\?/, ""));
   const page = parseInt(params.get("page") || "1", 10);
+  console.log("elise_________________");
+  console.log( base);
   return { url: base, page: Number.isFinite(page) ? Math.max(1, page) : 1 };
 }
 

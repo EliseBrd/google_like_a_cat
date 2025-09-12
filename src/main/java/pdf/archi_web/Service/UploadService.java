@@ -17,8 +17,8 @@ public class UploadService {
     private final PdfIndexer indexer;
 
     public UploadService(
-            @Value("${pdf.storage-dir:src/main/resources/static/pdf}") String storageDirProp,
-            @Value("${pdf.front-public-dir:}") String frontPublicDirProp
+            @Value("${PDF_STORAGE_DIR:/app/pdf}") String storageDirProp,
+            @Value("${FRONT_PUBLIC_DIR:}") String frontPublicDirProp
     ) throws Exception {
         this.storageDir = Path.of(storageDirProp).toAbsolutePath().normalize();
         Files.createDirectories(this.storageDir);
