@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSearch } from "@fortawesome/free-solid-svg-icons";
 import { Client } from "@stomp/stompjs";
 import { supabase } from "./supabaseClient";
-import UploadBox from "./components/UploadBox";
+import Navbar from "./components/Navbar";
 
 function useDebouncedValue(value, delay = 250) {
   const [v, setV] = useState(value);
@@ -16,117 +16,8 @@ function useDebouncedValue(value, delay = 250) {
   return v;
 }
 
-function AuthUI() {
-  const [mode, setMode] = useState("signin");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [msg, setMsg] = useState("");
-  const [err, setErr] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const redirectTo = window.location.origin;
-  const submit = async (e) => {
-    e.preventDefault();
-    setErr("");
-    setMsg("");
-    setLoading(true);
-    try {
-      if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { emailRedirectTo: redirectTo },
-        });
-        if (error) throw error;
-        setMsg("Compte créé. Vérifie tes emails pour confirmer.");
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) throw error;
-        setMsg("Connecté ✅");
-      }
-    } catch (e) {
-      setErr(e.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const resetPassword = async () => {
-    setErr("");
-    setMsg("");
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo,
-    });
-    if (error) setErr(error.message);
-    else setMsg("Email de réinitialisation envoyé (si le compte existe).");
-  };
-
-  return (
-    <div
-      style={{
-        height: "fit-content",
-        display: "grid",
-        placeItems: "center",
-        padding: 16,
-      }}
-    >
-      <form
-        onSubmit={submit}
-        style={{ display: "grid", gap: 8, width: 320, height: "fit-content" }}
-      >
-        <h2 style={{ marginBottom: 8 }}>
-          {mode === "signup" ? "Créer un compte" : "Se connecter"}
-        </h2>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <input
-          type="password"
-          placeholder="Mot de passe"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-        <button type="submit" disabled={loading}>
-          {loading ? "..." : mode === "signup" ? "Créer" : "Se connecter"}
-        </button>
-        <button type="button" onClick={resetPassword}>
-          Mot de passe oublié ?
-        </button>
-        <div style={{ fontSize: 14 }}>
-          {mode === "signup" ? (
-            <>
-              Déjà un compte ?{" "}
-              <a href="#signin" onClick={() => setMode("signin")}>
-                Se connecter
-              </a>
-            </>
-          ) : (
-            <>
-              Nouveau ?{" "}
-              <a href="#signup" onClick={() => setMode("signup")}>
-                Créer un compte
-              </a>
-            </>
-          )}
-        </div>
-        {msg && <div style={{ color: "#0a0" }}>{msg}</div>}
-        {err && <div style={{ color: "#c00" }}>Erreur: {err}</div>}
-      </form>
-    </div>
-  );
-}
-
 export default function App() {
   const [session, setSession] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true);
   const firstResultMs = useRef(null);
 
   useEffect(() => {
@@ -134,7 +25,6 @@ export default function App() {
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
       setSession(data.session ?? null);
-      setAuthLoading(false);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => {
       setSession(sess ?? null);
@@ -161,7 +51,6 @@ export default function App() {
   const stompClient = useRef(null);
   const sessionId = user?.id || "user123";
 
-  // ⏱ Timer
   const searchStartTime = useRef(null);
   const [elapsedTime, setElapsedTime] = useState(null);
 
@@ -178,9 +67,6 @@ export default function App() {
         `/queue/results-${sessionId}`,
         async (message) => {
           try {
-            console.log(message);
-
-            // ✅ Recherche terminée
             if (message.body === "COMPLETED") {
               console.log("Recherche terminée");
               setLoading(false);
@@ -297,107 +183,85 @@ export default function App() {
     }
   }, [hits]);
 
-  if (authLoading) return <div style={{ padding: 16 }}>Chargement...</div>;
-  if (!user) return <AuthUI />;
-
   return (
-    <div
-      style={{
-        height: "fit-content",
-        display: "grid",
-        gridTemplateRows: "auto 1fr",
-      }}
-    >
+    <>
+      <Navbar user={user} />
       <div
         style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "12px 16px",
-          borderBottom: "1px solid #eee",
-        }}
-      >
-        <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>
-            Rechercher dans les documents
-          </h1>
-          <div style={{ fontSize: 12, color: "#666" }}>
-            Connecté en tant que <strong>{user.email}</strong>
-          </div>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <UploadBox user={user} />
-          <button onClick={() => supabase.auth.signOut()}>Déconnexion</button>
-        </div>
-      </div>
-
-      <div
-        style={{
-          margin: "0 0",
-          width: "50%",
-          left: 0,
-          padding: "16px",
           height: "fit-content",
-        }}
-      >
-        <div style={{ position: "relative", width: "100%" }}>
-          <FontAwesomeIcon
-            icon={faSearch}
-            style={{
-              position: "absolute",
-              left: 12,
-              top: "50%",
-              transform: "translateY(-50%)",
-              color: "#888",
-              pointerEvents: "none",
-            }}
-          />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Tapez votre requête…"
-            className="search-input"
-          />
-        </div>
-        {loading && (
-          <div style={{ marginTop: 8, fontSize: 14, color: "#666" }}>
-            Recherche en cours...
-          </div>
-        )}
-        {error && (
-          <div style={{ marginTop: 8, fontSize: 14, color: "#c00" }}>
-            Erreur: {error}
-          </div>
-        )}
-        {elapsedTime && (
-          <div style={{ marginTop: 8, fontSize: 14, color: "#0a0" }}>
-            Premier résultat reçu en {elapsedTime} ms
-          </div>
-        )}
-      </div>
-
-      <div
-        style={{
           display: "grid",
-          gridTemplateColumns: "minmax(450px, 650px) 1fr",
-          gap: 12,
-          height: "100%",
-          width: "100%",
-          margin: "0 auto",
-          padding: "0 16px 16px",
-          boxSizing: "border-box",
+          gridTemplateRows: "auto 1fr",
         }}
       >
-        <div style={{ overflow: "auto", paddingRight: 4 }}>
-          <ResultsByFile
-            hits={hits}
-            query={debouncedQ}
-            onSelectUrl={(url) => setSelectedUrl(url)}
-          />
+
+        <div
+          style={{
+            margin: "0 0",
+            width: "50%",
+            left: 0,
+            padding: "16px",
+            height: "fit-content",
+          }}
+        >
+          <div style={{ position: "relative", width: "100%" }}>
+            <FontAwesomeIcon
+              icon={faSearch}
+              style={{
+                position: "absolute",
+                left: 12,
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: "#888",
+                pointerEvents: "none",
+              }}
+            />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Tapez votre requête…"
+              className="search-input"
+            />
+          </div>
+          {loading && (
+            <div style={{ marginTop: 8, fontSize: 14, color: "#666" }}>
+              Recherche en cours...
+            </div>
+          )}
+          {error && (
+            <div style={{ marginTop: 8, fontSize: 14, color: "#c00" }}>
+              Erreur: {error}
+            </div>
+          )}
+          {elapsedTime && (
+            <div style={{ marginTop: 8, fontSize: 14, color: "#0a0" }}>
+              Premier résultat reçu en {elapsedTime} ms
+            </div>
+          )}
         </div>
 
-        <PdfJsViewer src={selectedUrl} query={debouncedQ} />
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "minmax(450px, 650px) 1fr",
+            gap: 12,
+            height: "100%",
+            width: "100%",
+            margin: "0 auto",
+            padding: "0 16px 16px",
+            boxSizing: "border-box",
+          }}
+        >
+          <div style={{ overflow: "auto", paddingRight: 4 }}>
+            <ResultsByFile
+              hits={hits}
+              query={debouncedQ}
+              onSelectUrl={(url) => setSelectedUrl(url)}
+            />
+          </div>
+
+          <PdfJsViewer src={selectedUrl} query={debouncedQ} />
+        </div>
       </div>
-    </div>
+    </>
   );
 }
