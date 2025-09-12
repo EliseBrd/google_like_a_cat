@@ -222,23 +222,14 @@ export default function App() {
       searchStartTime.current = performance.now();
       stompClient.current.publish({
         destination: "/app/startSearch",
-        body: JSON.stringify({ query: debouncedQ, sessionId }),
+        body: JSON.stringify({ query: debouncedQ, sessionId, user: pseudo }),
       });
     } else {
       console.error("STOMP non connecté");
       setError("Impossible de se connecter au serveur WebSocket");
       setLoading(false);
     }
-  };
-
-  // ⚡ Gérer l’appui sur Entrée
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      setSearchQuery(q);
-      startSearch(q);
-    }
-  };
+  }, [debouncedQ, user, sessionId]);
 
   useEffect(() => {
     if (hits?.length) {
@@ -295,8 +286,7 @@ export default function App() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            onKeyDown={handleKeyDown} // ⬅️ ici
-            placeholder="Tapez votre requête et appuyez sur Entrée…"
+            placeholder="Tapez votre requête…"
             className="search-input"
           />
         </div>
@@ -332,12 +322,12 @@ export default function App() {
         <div style={{ overflow: "auto", paddingRight: 4 }}>
           <ResultsByFile
             hits={hits}
-            query={searchQuery}
+            query={debouncedQ}
             onSelectUrl={(url) => setSelectedUrl(url)}
           />
         </div>
 
-        <PdfJsViewer src={selectedUrl} query={searchQuery} />
+        <PdfJsViewer src={selectedUrl} query={debouncedQ} />
       </div>
     </div>
   );
